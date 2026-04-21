@@ -1,68 +1,60 @@
 #include <iostream>
-#include <fstream>
 #include <vector>
+#include <fstream>
 #include <chrono>
 
 using namespace std;
 
-// Функция для чтения матрицы из файла
-vector<double> readMatrix(const string& filename, int& n) {
+// Функция для выделения памяти и чтения из файла
+bool readMatrix(const string& filename, int& n, vector<double>& matrix) {
     ifstream in(filename);
+    if (!in.is_open()) return false;
     in >> n;
-    vector<double> matrix(n * n);
-    for (int i = 0; i < n * n; ++i) in >> matrix[i];
-    return matrix;
-}
-
-// Функция для записи матрицы в файл
-void saveMatrix(const string& filename, const vector<double>& matrix, int n) {
-    ofstream out(filename);
-    out << n << endl;
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            out << matrix[i * n + j] << " ";
-        }
-        out << endl;
+    matrix.resize(n * n);
+    for (int i = 0; i < n * n; ++i) {
+        if (!(in >> matrix[i])) break;
     }
+    return true;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 3) {
-        cout << "Usage: " << argv[0] << " <matrixA.txt> <matrixB.txt>" << endl;
+    int n;
+    vector<double> A, B;
+
+    // 1. Считываем данные
+    if (!readMatrix("A.txt", n, A) || !readMatrix("B.txt", n, B)) {
+        cerr << "Ошибка открытия файлов матриц!" << endl;
         return 1;
     }
 
-    int n1, n2;
-    vector<double> A = readMatrix(argv[1], n1);
-    vector<double> B = readMatrix(argv[2], n2);
-
-    if (n1 != n2) {
-        cerr << "Error: Matrices must be of the same size!" << endl;
-        return 1;
-    }
-
-    int n = n1;
     vector<double> C(n * n, 0.0);
 
-    cout << "Task size: " << n << "x" << n << endl;
-
-    // Начало замера времени
+    // 2. Вычисления (замеряем только этот блок)
     auto start = chrono::high_resolution_clock::now();
 
-    // Классическое перемножение (наивный алгоритм)
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
+            double sum = 0;
             for (int k = 0; k < n; ++k) {
-                C[i * n + j] += A[i * n + k] * B[k * n + j];
+                sum += A[i * n + k] * B[k * n + j];
             }
+            C[i * n + j] = sum;
         }
     }
 
     auto end = chrono::high_resolution_clock::now();
-    chrono::duration<double> diff = end - start;
+    chrono::duration<double> duration = end - start;
 
-    cout << "Execution time: " << diff.count() << " seconds" << endl;
+    // 3. Вывод результатов
+    cout << "Размерность матрицы: " << n << endl;
+    cout << "Время выполнения: " << duration.count() << " сек." << endl;
 
-    saveMatrix("result.txt", C, n);
+    // Сохраняем результат для верификации
+    ofstream out("result.txt");
+    out << n << endl;
+    for (int i = 0; i < n * n; ++i) {
+        out << C[i] << ( (i + 1) % n == 0 ? "\n" : " " );
+    }
+
     return 0;
 }
